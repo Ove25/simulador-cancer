@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Simulador de Exposición y Riesgo Oncológico</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- CAJA 1: HEADER & RIESGO GLOBAL -->
+  <header class="card header-box">
+    <div class="header-title">
+      <h1>Evaluación de Riesgo Oncológico</h1>
+      <p>Simulación biomecánica de exposición a tabaco, alcohol y vapeo</p>
+    </div>
+    <div class="global-risk-wrapper">
+      <div class="risk-score">
+        <span class="risk-label">Riesgo Global Estimado</span>
+        <span class="risk-value" id="global-risk-value">0%</span>
+      </div>
+      <div class="risk-bar-track">
+        <div class="risk-bar-fill" id="global-risk-bar"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid-layout">
+
+    <!-- CAJA 2: CONTROLES DE NIVELES (IZQUIERDA) -->
+    <section class="card controls-box">
+      <h2>Nivel de Consumo</h2>
+      
+      <!-- Tabaco -->
+      <div class="control-group">
+        <div class="control-header">
+          <label for="tabaco">Tabaco</label>
+          <span class="val-badge" id="lbl-tabaco">Nunca</span>
+        </div>
+        <input type="range" id="tabaco" min="0" max="4" value="0" step="1">
+        <div class="range-steps">
+          <span>Nunca</span><span>Ocasional</span><span>Semanal</span><span>Diario</span><span>Intenso</span>
+        </div>
+      </div>
+
+      <!-- Alcohol -->
+      <div class="control-group">
+        <div class="control-header">
+          <label for="alcohol">Alcohol</label>
+          <span class="val-badge" id="lbl-alcohol">Nunca</span>
+        </div>
+        <input type="range" id="alcohol" min="0" max="4" value="0" step="1">
+        <div class="range-steps">
+          <span>Nunca</span><span>Ocasional</span><span>Semanal</span><span>Diario</span><span>Intenso</span>
+        </div>
+      </div>
+
+      <!-- Vapeo -->
+      <div class="control-group">
+        <div class="control-header">
+          <label for="vapeo">Vapeo</label>
+          <span class="val-badge" id="lbl-vapeo">Nunca</span>
+        </div>
+        <input type="range" id="vapeo" min="0" max="4" value="0" step="1">
+        <div class="range-steps">
+          <span>Nunca</span><span>Ocasional</span><span>Semanal</span><span>Diario</span><span>Intenso</span>
+        </div>
+      </div>
+
+      <!-- Años de Exposición -->
+      <div class="control-group">
+        <label>Tiempo de Exposición (Años)</label>
+        <div class="year-selector">
+          <button class="btn-year" data-years="1">1 yr</button>
+          <button class="btn-year" data-years="5">5 yrs</button>
+          <button class="btn-year active" data-years="10">10 yrs</button>
+          <button class="btn-year" data-years="20">20 yrs</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAJA 3: SILUETA & GENERACIÓN DE ROS (CENTRO) -->
+    <section class="card visual-box">
+      <h2>Estrés Celular & ROS</h2>
+      <div class="body-canvas" id="body-canvas">
+        <div class="silhouette-placeholder">
+          <!-- Silueta SVG de anatomía de tórax/cabeza -->
+          <svg viewBox="0 0 100 200" class="human-svg">
+            <path d="M50,15 C58,15 63,22 63,30 C63,38 58,43 50,43 C42,43 37,38 37,30 C37,22 42,15 50,15 Z M35,46 L65,46 L75,75 L68,80 L62,60 L62,140 L52,140 L52,190 L48,190 L48,140 L38,140 L38,60 L32,80 L25,75 Z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="ros-layer" id="ros-layer"></div>
+      </div>
+    </section>
+
+    <!-- CAJA 4: MARCADORES BIOLÓGICOS (DERECHA) -->
+    <section class="card markers-box">
+      <h2>Marcadores de Daño</h2>
+      <div class="bars-container">
+        
+        <div class="bar-item">
+          <div class="bar-track">
+            <div class="bar-fill" id="fill-adn"></div>
+          </div>
+          <span class="bar-value" id="val-adn">0%</span>
+          <span class="bar-title">Daño ADN</span>
+        </div>
+
+        <div class="bar-item">
+          <div class="bar-track">
+            <div class="bar-fill" id="fill-estres"></div>
+          </div>
+          <span class="bar-value" id="val-estres">0%</span>
+          <span class="bar-title">Estrés Ox.</span>
+        </div>
+
+        <div class="bar-item">
+          <div class="bar-track">
+            <div class="bar-fill" id="fill-antiox"></div>
+          </div>
+          <span class="bar-value" id="val-antiox">100%</span>
+          <span class="bar-title">Cap. Antiox.</span>
+        </div>
+
+      </div>
+
+      <div class="impact-card" id="impact-card">
+        <p id="impact-text">Tu riesgo acumulado es <strong>1.0x</strong> el riesgo basal de la población.</p>
+      </div>
+    </section>
+
+    <!-- CAJA 5: LÍNEA TEMPORAL Y BOTÓN DE REVERSIÓN (INFERIOR) -->
+    <section class="card bottom-box">
+      <div class="timeline-wrapper">
+        <h2>Línea de Progresión Temporal</h2>
+        <div class="timeline-track">
+          <div class="timeline-step"><span>0 yrs</span><small>Línea Base</small></div>
+          <div class="timeline-step"><span>10 yrs</span><small>Daño Silencioso</small></div>
+          <div class="timeline-step"><span>20 yrs</span><small>Lesión Tisular</small></div>
+          <div class="timeline-step"><span>40 yrs</span><small>Riesgo Crítico</small></div>
+        </div>
+      </div>
+      <div class="action-wrapper">
+        <button id="btn-quit" class="btn-action">Simular Cesación</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
