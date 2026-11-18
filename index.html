@@ -3,21 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Simulador de Exposición y Riesgo Oncológico</title>
+  <title>Simulador de Riesgo Oncológico</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <!-- CAJA 1: HEADER & RIESGO GLOBAL -->
-  <header class="card header-box">
+  <!-- HEADER: Título y Riesgo Global -->
+  <header class="app-header">
     <div class="header-title">
-      <h1>Evaluación de Riesgo Oncológico</h1>
-      <p>Simulación biomecánica de exposición a tabaco, alcohol y vapeo</p>
+      <h1>Simulador de Riesgo Oncológico</h1>
+      <p>Impacto biológico por exposición a tabaco, alcohol y vapeo</p>
     </div>
-    <div class="global-risk-wrapper">
-      <div class="risk-score">
-        <span class="risk-label">Riesgo Global Estimado</span>
+    <div class="global-risk">
+      <div class="risk-label">Riesgo Global Estimado</div>
+      <div class="risk-value-container">
         <span class="risk-value" id="global-risk-value">0%</span>
+        <span class="risk-multiplier" id="impact-text">1.0x base</span>
       </div>
       <div class="risk-bar-track">
         <div class="risk-bar-fill" id="global-risk-bar"></div>
@@ -25,13 +29,13 @@
     </div>
   </header>
 
-  <main class="grid-layout">
-
-    <!-- CAJA 2: CONTROLES DE NIVELES (IZQUIERDA) -->
-    <section class="card controls-box">
-      <h2>Nivel de Consumo</h2>
+  <!-- MAIN: Controles y Visualización -->
+  <main class="app-main">
+    
+    <!-- COLUMNA IZQUIERDA: Controles -->
+    <section class="panel controls-panel">
+      <h2>Factores de Exposición</h2>
       
-      <!-- Tabaco -->
       <div class="control-group">
         <div class="control-header">
           <label for="tabaco">Tabaco</label>
@@ -43,7 +47,6 @@
         </div>
       </div>
 
-      <!-- Alcohol -->
       <div class="control-group">
         <div class="control-header">
           <label for="alcohol">Alcohol</label>
@@ -55,7 +58,6 @@
         </div>
       </div>
 
-      <!-- Vapeo -->
       <div class="control-group">
         <div class="control-header">
           <label for="vapeo">Vapeo</label>
@@ -67,9 +69,8 @@
         </div>
       </div>
 
-      <!-- Años de Exposición -->
       <div class="control-group">
-        <label>Tiempo de Exposición (Años)</label>
+        <label>Tiempo de Exposición</label>
         <div class="year-selector">
           <button class="btn-year" data-years="1">1 yr</button>
           <button class="btn-year" data-years="5">5 yrs</button>
@@ -77,75 +78,68 @@
           <button class="btn-year" data-years="20">20 yrs</button>
         </div>
       </div>
+
+      <button id="btn-quit" class="btn-quit">Simular Cesación</button>
     </section>
 
-    <!-- CAJA 3: SILUETA & GENERACIÓN DE ROS (CENTRO) -->
-    <section class="card visual-box">
-      <h2>Estrés Celular & ROS</h2>
-      <div class="body-canvas" id="body-canvas">
-        <div class="silhouette-placeholder">
-          <!-- Silueta SVG de anatomía de tórax/cabeza -->
-          <svg viewBox="0 0 100 200" class="human-svg">
-            <path d="M50,15 C58,15 63,22 63,30 C63,38 58,43 50,43 C42,43 37,38 37,30 C37,22 42,15 50,15 Z M35,46 L65,46 L75,75 L68,80 L62,60 L62,140 L52,140 L52,190 L48,190 L48,140 L38,140 L38,60 L32,80 L25,75 Z" fill="currentColor"/>
+    <!-- COLUMNA DERECHA: Visualización (Silueta y Marcadores) -->
+    <section class="panel visual-panel">
+      
+      <!-- Silueta y ROS -->
+      <div class="visualizer">
+        <h2>Estrés Celular y Órganos Afectados</h2>
+        <div class="body-canvas" id="body-canvas">
+          <div class="ros-layer" id="ros-layer"></div>
+          
+          <!-- Silueta Anatómica SVG -->
+          <svg viewBox="0 0 200 400" class="human-svg">
+            <circle cx="100" cy="50" r="28" class="body-base" />
+            <rect x="90" y="75" width="20" height="20" class="body-base" />
+            <path d="M 60,95 Q 100,90 140,95 L 150,200 Q 100,220 50,200 Z" class="body-base" />
+            <path d="M 60,95 L 30,180 L 35,190 L 65,120 Z" class="body-base" />
+            <path d="M 140,95 L 170,180 L 165,190 L 135,120 Z" class="body-base" />
+            <path d="M 70,210 L 60,380 L 80,380 L 90,220 Z" class="body-base" />
+            <path d="M 130,210 L 140,380 L 120,380 L 110,220 Z" class="body-base" />
+
+            <!-- Órganos -->
+            <path id="organ-pulmones" class="organ" d="M 75,115 Q 90,110 95,150 Q 85,180 70,160 Z" />
+            <path id="organ-pulmones" class="organ" d="M 125,115 Q 110,110 105,150 Q 115,180 130,160 Z" />
+            <path id="organ-higado" class="organ" d="M 60,165 Q 80,155 100,175 Q 80,195 55,185 Z" />
+            <path id="organ-estomago" class="organ" d="M 105,165 Q 120,160 125,185 Q 110,195 100,180 Z" />
           </svg>
         </div>
-        <div class="ros-layer" id="ros-layer"></div>
       </div>
-    </section>
 
-    <!-- CAJA 4: MARCADORES BIOLÓGICOS (DERECHA) -->
-    <section class="card markers-box">
-      <h2>Marcadores de Daño</h2>
-      <div class="bars-container">
-        
-        <div class="bar-item">
-          <div class="bar-track">
-            <div class="bar-fill" id="fill-adn"></div>
+      <!-- Marcadores Biológicos -->
+      <div class="markers">
+        <h2>Marcadores Biológicos</h2>
+        <div class="bars-container">
+          <div class="bar-item">
+            <div class="bar-track"><div class="bar-fill" id="fill-adn"></div></div>
+            <span class="bar-title">Daño ADN</span>
+            <span class="bar-value" id="val-adn">0%</span>
           </div>
-          <span class="bar-value" id="val-adn">0%</span>
-          <span class="bar-title">Daño ADN</span>
-        </div>
-
-        <div class="bar-item">
-          <div class="bar-track">
-            <div class="bar-fill" id="fill-estres"></div>
+          <div class="bar-item">
+            <div class="bar-track"><div class="bar-fill" id="fill-estres"></div></div>
+            <span class="bar-title">Estrés Ox.</span>
+            <span class="bar-value" id="val-estres">0%</span>
           </div>
-          <span class="bar-value" id="val-estres">0%</span>
-          <span class="bar-title">Estrés Ox.</span>
-        </div>
-
-        <div class="bar-item">
-          <div class="bar-track">
-            <div class="bar-fill" id="fill-antiox"></div>
+          <div class="bar-item">
+            <div class="bar-track"><div class="bar-fill" id="fill-antiox"></div></div>
+            <span class="bar-title">Cap. Antiox.</span>
+            <span class="bar-value" id="val-antiox">100%</span>
           </div>
-          <span class="bar-value" id="val-antiox">100%</span>
-          <span class="bar-title">Cap. Antiox.</span>
-        </div>
-
-      </div>
-
-      <div class="impact-card" id="impact-card">
-        <p id="impact-text">Tu riesgo acumulado es <strong>1.0x</strong> el riesgo basal de la población.</p>
-      </div>
-    </section>
-
-    <!-- CAJA 5: LÍNEA TEMPORAL Y BOTÓN DE REVERSIÓN (INFERIOR) -->
-    <section class="card bottom-box">
-      <div class="timeline-wrapper">
-        <h2>Línea de Progresión Temporal</h2>
-        <div class="timeline-track">
-          <div class="timeline-step"><span>0 yrs</span><small>Línea Base</small></div>
-          <div class="timeline-step"><span>10 yrs</span><small>Daño Silencioso</small></div>
-          <div class="timeline-step"><span>20 yrs</span><small>Lesión Tisular</small></div>
-          <div class="timeline-step"><span>40 yrs</span><small>Riesgo Crítico</small></div>
         </div>
       </div>
-      <div class="action-wrapper">
-        <button id="btn-quit" class="btn-action">Simular Cesación</button>
-      </div>
-    </section>
 
+    </section>
   </main>
+
+  <!-- FOOTER CON AUTORES -->
+  <footer class="app-footer">
+    <span>Simulador Educativo de Riesgo Oncológico</span>
+    <span class="authors">Desarrollado por Kevin Santiago Carrillo y Oscar Daniel Guarín</span>
+  </footer>
 
   <script src="app.js"></script>
 </body>
