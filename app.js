@@ -1,24 +1,23 @@
 /**
- * CAJA DE DATOS E INICIALIZACIÓN
- * Reemplaza esta sección cuando tengas las tablas de Riesgo Relativo reales
+ * MATRIZ DE RIESGO CALIBRADA CON EXCEL (Bagnardi 2015 / CDC)
  */
-const MATRIZ_RIESGO_SIMULADA = {
-  tabaco:  [1.0, 1.3, 2.0, 4.0, 7.5],
-  alcohol: [1.0, 1.2, 1.6, 2.8, 5.0],
-  vapeo:   [1.0, 1.2, 1.4, 1.9, 3.2]
+const MATRIZ_RIESGO = {
+  // Alcohol: Promedio de los 6 cánceres con "Calibrar simulador: SÍ" (Bagnardi 2015)
+  // RRs: 5.13, 4.95, 2.65, 2.07, 1.61, 1.44 -> Escalado a 5 niveles
+  alcohol: [1.0, 1.4, 2.1, 3.0, 4.5],
+  
+  // Tabaco: CDC indica un rango de 15 a 30 para cáncer de pulmón (Fumador vs No fumador).
+  // Usamos 20 como base para "Intenso" y escalamos hacia abajo.
+  tabaco:  [1.0, 2.5, 5.0, 10.0, 20.0],
+  
+  // Vapeo: No hay datos en la tabla, curva de riesgo simulada conservadora.
+  vapeo:   [1.0, 1.2, 1.8, 2.5, 3.5]
 };
 
 const TEXTOS_NIVEL = ["Nunca", "Ocasional", "Semanal", "Diario", "Intenso"];
 
-// Estado Global de la App
-const state = {
-  tabaco: 0,
-  alcohol: 0,
-  vapeo: 0,
-  anos: 10
-};
+const state = { tabaco: 0, alcohol: 0, vapeo: 0, anos: 10 };
 
-// Referencias DOM
 const dom = {
   tabaco: document.getElementById('tabaco'),
   alcohol: document.getElementById('alcohol'),
@@ -29,132 +28,168 @@ const dom = {
   yearBtns: document.querySelectorAll('.btn-year'),
   globalRiskBar: document.getElementById('global-risk-bar'),
   globalRiskValue: document.getElementById('global-risk-value'),
+  impactText: document.getElementById('impact-text'),
   fillAdn: document.getElementById('fill-adn'),
   fillEstres: document.getElementById('fill-estres'),
   fillAntiox: document.getElementById('fill-antiox'),
   valAdn: document.getElementById('val-adn'),
   valEstres: document.getElementById('val-estres'),
   valAntiox: document.getElementById('val-antiox'),
-  impactText: document.getElementById('impact-text'),
-  impactCard: document.getElementById('impact-card'),
   rosLayer: document.getElementById('ros-layer'),
-  humanSvg: document.querySelector('.human-svg'),
-  btnQuit: document.getElementById('btn-quit')
+  btnQuit: document.getElementById('btn-quit'),
+  organs: {
+    pulmones: document.querySelectorAll('#organ-pulmones'),
+    higado: document.querySelectorAll('#organ-higado'),
+    estomago: document.querySelectorAll('#organ-estomago')
+  }
 };
 
-/**
- * MOTOR DE CÁLCULO
- * Aquí se procesan las variables. Se reemplazará por la llamada API en Render.
- */
 function calcularResultados() {
-  const rrTabaco = MATRIZ_RIESGO_SIMULADA.tabaco[state.tabaco];
-  const rrAlcohol = MATRIZ_RIESGO_SIMULADA.alcohol[state.alcohol];
-  const rrVapeo = MATRIZ_RIESGO_SIMULADA.vapeo[state.vapeo];
+  const rrTabaco = MATRIZ_RIESGO.tabaco[state.tabaco];
+  const rrAlcohol = MATRIZ_RIESGO.alcohol[state.alcohol];
+  const rrVapeo = MATRIZ_RIESGO.vapeo[state.vapeo];
 
-  // Sinergia multiplicativa de factores de riesgo + peso temporal
+  // Sinergia multiplicativa + factor tiempo
   const multiplicadorTotal = rrTabaco * rrAlcohol * rrVapeo;
   const factorTiempo = 1 + (state.anos * 0.04);
   const riesgoAcumulado = multiplicadorTotal * factorTiempo;
+  
+  // Normalización para la UI (Máximo teórico ~567)
+  const maxRiesgo = 567; 
+  const riesgoPorcentaje = Math.min(Math.round((riesgoAcumulado / maxRiesgo) * 100), 99);
 
-  // Porcentaje normalizado para la UI (Capado a 99%)
-  const riesgoPorcentaje = Math.min(Math.round((riesgoAcumulado / 25) * 100), 99);
+  // Marcadores biológicos derivados
+  const danoAdn = Math.min(Math.round(riesgoAcumulado * 1.5), 100);
+  const estresOx = Math.min(Math.round(riesgoAcumulado * 2.0), 100);
+  const antiox = Math.max(100 - Math.round(riesgoAcumulado * 1.2), 5);
 
-  // Marcadores moleculares derivados
-  const danoAdn = Math.min(Math.round(riesgoAcumulado * 7.5), 100);
-  const estresOx = Math.min(Math.round(riesgoAcumulado * 9.0), 100);
-  const antiox = Math.max(100 - Math.round(riesgoAcumulado * 8.0), 5);
+  // Niveles para el SVG (Pulmones: tabaco/vapeo, Hígado: alcohol)
+  const nivelPulmones = Math.max(rrTabaco, rrVapeo) - 1; 
+  const nivelHigado = rrAlcohol - 1;
 
   return {
     multiplicador: riesgoAcumulado.toFixed(1),
     porcentaje: riesgoPorcentaje,
     adn: danoAdn,
     estres: estresOx,
-    antiox: antiox
+    antiox: antiox,
+    nivelPulmones: nivelPulmones,
+    nivelHigado: nivelHigado
   };
 }
 
-/**
- * RENDERIZADO VISUAL & TRANSICIÓN DE COLORES
- */
 function actualizarUI() {
   const data = calcularResultados();
 
-  // Actualización de Textos de badge
   dom.lblTabaco.textContent = TEXTOS_NIVEL[state.tabaco];
   dom.lblAlcohol.textContent = TEXTOS_NIVEL[state.alcohol];
   dom.lblVapeo.textContent = TEXTOS_NIVEL[state.vapeo];
 
-  // Actualización de barras de progreso
   dom.globalRiskBar.style.width = `${data.porcentaje}%`;
   dom.globalRiskValue.textContent = `${data.porcentaje}%`;
+  dom.impactText.textContent = `${data.multiplicador}x riesgo basal`;
 
   dom.fillAdn.style.height = `${data.adn}%`;
   dom.valAdn.textContent = `${data.adn}%`;
-
   dom.fillEstres.style.height = `${data.estres}%`;
   dom.valEstres.textContent = `${data.estres}%`;
-
   dom.fillAntiox.style.height = `${data.antiox}%`;
   dom.valAntiox.textContent = `${data.antiox}%`;
 
-  dom.impactText.innerHTML = `Tu riesgo acumulado es <strong>${data.multiplicador}x</strong> mayor respecto a la línea base.`;
-
-  // Transición dinámica de color según severidad (Azul/Morado -> Rojo/Negro)
   aplicarPaletaDinamica(data.porcentaje);
-  generarParticulasROS(data.estres);
+  actualizarOrganos(data.nivelPulmones, data.nivelHigado);
+  actualizarParticulasROS(data.estres, data.nivelPulmones, data.nivelHigado);
 }
 
 function aplicarPaletaDinamica(porcentaje) {
-  // Factor de 0 a 1
   const t = porcentaje / 100;
-
-  if (t > 0.4) {
-    // Cambio hacia tonos de advertencia y crítico (Rojizos a Negros)
-    const colorRojo = `rgb(${Math.round(139 + t * 116)}, ${Math.round(92 - t * 70)}, ${Math.round(246 - t * 200)})`;
-    dom.globalRiskValue.style.color = colorRojo;
-    dom.globalRiskBar.style.background = `linear-gradient(90deg, #ef4444, #7f1d1d)`;
-    dom.humanSvg.style.color = colorRojo;
-    dom.impactCard.style.borderColor = '#ef4444';
+  
+  if (t > 0.3) {
+    const r = Math.round(59 + t * 196);
+    const g = Math.round(130 - t * 90);
+    const b = Math.round(246 - t * 200);
+    const color = `rgb(${r}, ${g}, ${b})`;
+    
+    dom.globalRiskValue.style.color = color;
+    dom.globalRiskBar.style.background = `linear-gradient(90deg, ${color}, #ef4444)`;
+    dom.fillAdn.style.background = t > 0.5 ? 'var(--danger)' : 'var(--warning)';
+    dom.fillEstres.style.background = t > 0.5 ? 'var(--danger)' : 'var(--warning)';
   } else {
-    // Tonos saludables (Morado/Azul)
-    dom.globalRiskValue.style.color = 'var(--color-safe-primary)';
-    dom.globalRiskBar.style.background = `linear-gradient(90deg, var(--color-safe-secondary), var(--color-safe-primary))`;
-    dom.humanSvg.style.color = 'var(--border-color)';
-    dom.impactCard.style.borderColor = 'transparent';
+    dom.globalRiskValue.style.color = 'var(--safe)';
+    dom.globalRiskBar.style.background = 'linear-gradient(90deg, var(--safe), var(--warning))';
+    dom.fillAdn.style.background = 'var(--safe)';
+    dom.fillEstres.style.background = 'var(--safe)';
   }
 }
 
-function generarParticulasROS(nivelEstres) {
-  dom.rosLayer.innerHTML = '';
-  const cantidad = Math.floor(nivelEstres / 4);
-
-  for (let i = 0; i < cantidad; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'ros-particle';
-    const size = Math.random() * 12 + 6;
+function actualizarOrganos(nivelPulmones, nivelHigado) {
+  const setOrganColor = (elements, level, maxLevel) => {
+    const intensity = Math.min(level / maxLevel, 1); 
+    const r = Math.round(51 + intensity * 188);
+    const g = Math.round(65 - intensity * 50);
+    const b = Math.round(85 - intensity * 70);
     
-    dot.style.width = `${size}px`;
-    dot.style.height = `${size}px`;
-    dot.style.top = `${Math.random() * 80 + 10}%`;
-    dot.style.left = `${Math.random() * 60 + 20}%`;
+    elements.forEach(el => {
+      el.style.fill = `rgba(${r}, ${g}, ${b}, ${0.3 + intensity * 0.7})`;
+      if (intensity > 0.3) {
+        el.style.filter = `drop-shadow(0 0 ${intensity * 15}px rgba(239,68,68,0.8))`;
+      } else {
+        el.style.filter = 'none';
+      }
+    });
+  };
 
-    // Cambiar el color de las partículas ROS según intensidad
-    dot.style.background = nivelEstres > 50 ? 'var(--color-danger-primary)' : 'var(--color-safe-primary)';
+  setOrganColor(dom.organs.pulmones, nivelPulmones, 19); // Max Tabaco RR 20
+  setOrganColor(dom.organs.higado, nivelHigado, 2.0);   // Max Alcohol RR 3.0
+}
+
+function actualizarParticulasROS(nivelEstres, nivelPulmones, nivelHigado) {
+  const cantidad = Math.floor(nivelEstres / 5); 
+  const layer = dom.rosLayer;
+  
+  if (layer.children.length !== cantidad) {
+    layer.innerHTML = '';
     
-    dom.rosLayer.appendChild(dot);
+    for (let i = 0; i < cantidad; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'ros-particle';
+      
+      const isPulmon = Math.random() < 0.6 && nivelPulmones > 0.5;
+      const isHigado = !isPulmon && nivelHigado > 0.5;
+      
+      let top = 35;
+      let left = 50;
+      
+      if (isPulmon) {
+        top = 28 + Math.random() * 15; 
+        left = 35 + Math.random() * 30; 
+      } else if (isHigado) {
+        top = 42 + Math.random() * 10; 
+        left = 30 + Math.random() * 25; 
+      } else {
+        top = 25 + Math.random() * 40;
+        left = 25 + Math.random() * 50;
+      }
+
+      dot.style.top = `${top}%`;
+      dot.style.left = `${left}%`;
+      
+      const size = 4 + Math.random() * 10;
+      dot.style.width = `${size}px`;
+      dot.style.height = `${size}px`;
+      dot.style.animationDelay = `${Math.random() * 2}s`;
+      
+      layer.appendChild(dot);
+      setTimeout(() => dot.classList.add('active'), 50);
+    }
   }
 }
 
-/**
- * MANEJO DE EVENTOS (Optimizado para Safari & Mobile)
- */
 function bindEvents() {
-  const debouncedUpdate = debounce(actualizarUI, 16);
-
   ['tabaco', 'alcohol', 'vapeo'].forEach(key => {
     dom[key].addEventListener('input', (e) => {
       state[key] = parseInt(e.target.value, 10);
-      debouncedUpdate();
+      actualizarUI();
     });
   });
 
@@ -178,16 +213,6 @@ function bindEvents() {
   });
 }
 
-// Auxiliar Debounce para suavizar en Safari
-function debounce(fn, delay) {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn(...args), delay);
-  };
-}
-
-// Inicializar
 document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   actualizarUI();
